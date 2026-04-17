@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/diff@5.2.0/dist/diff.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -246,6 +247,36 @@
   .empty-title { font-size: 14px; font-weight: 500; color: var(--grey-600); }
   .empty-sub   { font-size: 12px; color: var(--grey-400); }
 
+  /* Diff panel */
+  #diff-panel { display: none; flex-direction: column; }
+  #diff-panel.active { display: flex; }
+  #diff-note {
+    padding: 8px 16px; font-size: 11px; color: var(--grey-600);
+    background: var(--grey-50); border-bottom: 1px solid var(--grey-200);
+    flex-shrink: 0;
+  }
+  #diff-note strong { color: var(--navy); }
+  #diff-legend { display:flex; gap:16px; padding: 6px 16px; background: var(--grey-50); border-bottom: 1px solid var(--grey-200); flex-shrink:0; }
+  .legend-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--grey-600); }
+  .legend-swatch { width:12px; height:12px; border-radius:2px; }
+  .swatch-add { background:#dcfce7; border:1px solid #86efac; }
+  .swatch-del { background:#fee2e2; border:1px solid #fca5a5; }
+  .swatch-same { background:var(--grey-100); border:1px solid var(--grey-200); }
+  #diff-stats { padding: 6px 16px; font-size:11px; color:var(--grey-600); background:var(--grey-50); border-bottom:1px solid var(--grey-200); flex-shrink:0; }
+  #diff-body { flex:1; overflow-y:auto; font-family:var(--font-mono); font-size:12px; line-height:1.6; }
+  .diff-line { display:flex; min-height:20px; }
+  .diff-line:hover { filter: brightness(0.97); }
+  .diff-gutter { width:36px; flex-shrink:0; text-align:right; padding:0 6px; font-size:10px; color:var(--grey-400); user-select:none; border-right:1px solid var(--grey-200); }
+  .diff-code { flex:1; padding:0 12px; white-space:pre-wrap; word-break:break-all; }
+  .diff-add  { background:#dcfce7; }
+  .diff-add .diff-gutter  { background:#bbf7d0; color:#166534; }
+  .diff-del  { background:#fee2e2; }
+  .diff-del .diff-gutter  { background:#fecaca; color:#991b1b; }
+  .diff-same { background:var(--white); }
+  .diff-same .diff-gutter { background:var(--grey-50); }
+  .diff-collapsed { background:var(--grey-100); color:var(--grey-400); font-style:italic; padding:2px 12px 2px 48px; font-size:11px; cursor:pointer; }
+  .diff-collapsed:hover { background:var(--grey-200); }
+
   /* Scrollbar styling */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -267,20 +298,9 @@
 
   <select id="doc-select">
     <option value="">— Select a document —</option>
-    <option value="nta">NTA Mariano Comense — Full Document</option>
-    <option value="tabella">Tabella Oneri 2026 — Fee Schedule</option>
+    <option value="nta">NTA_PdR_PdS_Parte prima.pdf</option>
+    <option value="tabella">tabella-oneri-e-costo-2026 (2).pdf</option>
   </select>
-
-  <div class="spacer"></div>
-
-  <div id="upload-zone">
-    <span id="server-note">Upload available when demo server is running</span>
-    <button id="upload-btn" style="display:none">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      Try your own PDF
-    </button>
-    <input type="file" id="file-input" accept=".pdf">
-  </div>
 </header>
 
 <!-- MAIN LAYOUT -->
@@ -309,6 +329,7 @@
       <div class="tabs">
         <button class="tab active" data-tab="rendered">Rendered</button>
         <button class="tab" data-tab="raw">Raw MD</button>
+        <button class="tab" data-tab="diff" id="diff-tab-btn">Diff vs Reference</button>
       </div>
     </div>
 
@@ -331,6 +352,18 @@
       <div class="md-panel" id="rendered-panel">
         <div id="meta-card" style="display:none"></div>
         <div id="rendered-body"></div>
+      </div>
+
+      <!-- Diff tab -->
+      <div class="md-panel" id="diff-panel">
+        <div id="diff-note">Comparing <strong>our output</strong> (left) against the <strong>client reference</strong> (right). Green = added by us, Red = only in reference.</div>
+        <div id="diff-legend">
+          <div class="legend-item"><div class="legend-swatch swatch-add"></div>Added (in our output only)</div>
+          <div class="legend-item"><div class="legend-swatch swatch-del"></div>Removed (in reference only)</div>
+          <div class="legend-item"><div class="legend-swatch swatch-same"></div>Unchanged</div>
+        </div>
+        <div id="diff-stats"></div>
+        <div id="diff-body"></div>
       </div>
 
       <!-- Raw tab -->
@@ -371,17 +404,22 @@ const DOCS = {
     label: 'NTA_PdR_PdS_Parte prima.pdf',
     pdf:   '../attachments/NTA_PdR_PdS_Parte prima.pdf',
     md:    'data/NTA_PdR_PdS.md',
+    ref:   '../attachments/NTA_PdR_PdS_MarianoComense_2025_primaparte.md',
+    refNote: 'Client reference covers prima parte only — extra content at end of our output is expected.',
   },
   tabella: {
     label: 'tabella-oneri-e-costo-2026 (2).pdf',
     pdf:   '../attachments/tabella-oneri-e-costo-2026 (2).pdf',
     md:    'data/tabella_oneri.md',
+    ref:   '../attachments/tabella_oneri_costo_2026.md',
+    refNote: 'Client reference for fee schedule table.',
   },
 };
 
 // ── STATE ───────────────────────────────────────────────────────
 let currentMarkdown = '';
 let activeTab = 'rendered';
+let currentDocKey = null;
 
 // ── ELEMENTS ────────────────────────────────────────────────────
 const docSelect      = document.getElementById('doc-select');
@@ -392,33 +430,19 @@ const mdFilename     = document.getElementById('md-filename');
 const metaCard       = document.getElementById('meta-card');
 const renderedBody   = document.getElementById('rendered-body');
 const renderedPanel  = document.getElementById('rendered-panel');
+const diffPanel      = document.getElementById('diff-panel');
+const diffBody       = document.getElementById('diff-body');
+const diffStats      = document.getElementById('diff-stats');
+const diffNote       = document.getElementById('diff-note');
 const rawPanel       = document.getElementById('raw-panel');
 const rawText        = document.getElementById('raw-text');
 const emptyState     = document.getElementById('empty-state');
 const loadingOverlay = document.getElementById('loading-overlay');
-const uploadBtn      = document.getElementById('upload-btn');
-const fileInput      = document.getElementById('file-input');
-const serverNote     = document.getElementById('server-note');
 const copyBtn        = document.getElementById('copy-btn');
 const statPages      = document.getElementById('stat-pages');
 const statExtractor  = document.getElementById('stat-extractor');
 const statWarnings   = document.getElementById('stat-warnings');
 const statWarningsWrap = document.getElementById('stat-warnings-wrap');
-
-// ── SERVER DETECTION ────────────────────────────────────────────
-async function checkServer() {
-  try {
-    const r = await fetch('/api/health', { method: 'GET', signal: AbortSignal.timeout(1500) });
-    if (r.ok) {
-      window.DEMO_SERVER_AVAILABLE = true;
-      uploadBtn.style.display = 'flex';
-      serverNote.style.display = 'none';
-    }
-  } catch {
-    window.DEMO_SERVER_AVAILABLE = false;
-  }
-}
-checkServer();
 
 // ── YAML FRONT MATTER PARSER ────────────────────────────────────
 function parseFrontMatter(markdown) {
@@ -525,16 +549,111 @@ function setTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   renderedPanel.classList.toggle('active', tab === 'rendered');
   rawPanel.classList.toggle('active', tab === 'raw');
+  diffPanel.classList.toggle('active', tab === 'diff');
+  if (tab === 'diff' && currentDocKey) loadDiff(currentDocKey);
 }
 
 document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => setTab(btn.dataset.tab));
 });
 
+// ── DIFF RENDERER ────────────────────────────────────────────────
+const CONTEXT_LINES = 4;  // unchanged lines to show around each change
+
+async function loadDiff(key) {
+  const doc = DOCS[key];
+  if (!doc || !doc.ref) {
+    diffBody.innerHTML = '<p style="padding:20px;color:var(--grey-400)">No reference file available for this document.</p>';
+    return;
+  }
+
+  diffBody.innerHTML = '<p style="padding:20px;color:var(--grey-400)">Computing diff…</p>';
+  diffStats.textContent = '';
+
+  try {
+    const [refR] = await Promise.all([fetch(doc.ref)]);
+    if (!refR.ok) throw new Error(`Could not load reference: HTTP ${refR.status}`);
+    const refText = await refR.text();
+
+    // Update note with doc-specific context
+    diffNote.innerHTML = `Comparing <strong>our output</strong> against <strong>client reference</strong> (${doc.ref.split('/').pop()}). ${doc.refNote || ''} &nbsp;·&nbsp; Green = in our output only &nbsp;·&nbsp; Red = in reference only.`;
+
+    const ourLines = currentMarkdown.split('\n');
+    const refLines = refText.split('\n');
+
+    // Use diff library to compute line-by-line diff
+    const changes = Diff.diffArrays(refLines, ourLines);
+
+    // Build display lines with collapse logic
+    let added = 0, removed = 0;
+    const displayLines = []; // {type:'add'|'del'|'same', text, ourLine, refLine}
+    let ourN = 0, refN = 0;
+
+    for (const part of changes) {
+      if (part.added) {
+        for (const t of part.value) { added++; ourN++; displayLines.push({ type:'add', text:t, ourLine:ourN, refLine:null }); }
+      } else if (part.removed) {
+        for (const t of part.value) { removed++; refN++; displayLines.push({ type:'del', text:t, ourLine:null, refLine:refN }); }
+      } else {
+        for (const t of part.value) { ourN++; refN++; displayLines.push({ type:'same', text:t, ourLine:ourN, refLine:refN }); }
+      }
+    }
+
+    // Collapse long unchanged runs
+    const visibleIdx = new Set();
+    for (let i = 0; i < displayLines.length; i++) {
+      if (displayLines[i].type !== 'same') {
+        for (let j = Math.max(0, i - CONTEXT_LINES); j <= Math.min(displayLines.length-1, i + CONTEXT_LINES); j++) {
+          visibleIdx.add(j);
+        }
+      }
+    }
+
+    // Render
+    const frag = document.createDocumentFragment();
+    let i = 0;
+    while (i < displayLines.length) {
+      if (visibleIdx.has(i)) {
+        const l = displayLines[i];
+        const row = document.createElement('div');
+        row.className = `diff-line diff-${l.type}`;
+        const gutter = document.createElement('div');
+        gutter.className = 'diff-gutter';
+        gutter.textContent = l.type === 'add' ? `+${l.ourLine}` : l.type === 'del' ? `-${l.refLine}` : l.ourLine;
+        const code = document.createElement('div');
+        code.className = 'diff-code';
+        code.textContent = (l.type === 'add' ? '+ ' : l.type === 'del' ? '- ' : '  ') + l.text;
+        row.appendChild(gutter); row.appendChild(code);
+        frag.appendChild(row);
+        i++;
+      } else {
+        // Count collapsed run
+        let j = i;
+        while (j < displayLines.length && !visibleIdx.has(j)) j++;
+        const collapsed = document.createElement('div');
+        collapsed.className = 'diff-collapsed';
+        collapsed.textContent = `··· ${j - i} unchanged lines ···`;
+        frag.appendChild(collapsed);
+        i = j;
+      }
+    }
+    diffBody.innerHTML = '';
+    diffBody.appendChild(frag);
+
+    const total = ourLines.length;
+    const pctSame = (((total - added - removed) / Math.max(total, refLines.length)) * 100).toFixed(1);
+    diffStats.textContent = `${added} lines added · ${removed} lines removed · ${pctSame}% identical`;
+
+  } catch (e) {
+    diffBody.innerHTML = `<p style="padding:20px;color:#dc2626">${e.message}</p>`;
+  }
+}
+
 // ── LOAD PRE-BUILT DOCUMENT ──────────────────────────────────────
 async function loadDoc(key) {
   const doc = DOCS[key];
   if (!doc) return;
+  currentDocKey = key;
 
   // PDF pane
   pdfFilename.textContent = doc.label;
@@ -568,47 +687,6 @@ async function loadDoc(key) {
 
 docSelect.addEventListener('change', () => {
   if (docSelect.value) loadDoc(docSelect.value);
-});
-
-// ── PDF UPLOAD ───────────────────────────────────────────────────
-uploadBtn.addEventListener('click', () => fileInput.click());
-
-fileInput.addEventListener('change', async () => {
-  const file = fileInput.files[0];
-  if (!file) return;
-  fileInput.value = '';
-
-  // Show PDF blob in left pane
-  const blobUrl = URL.createObjectURL(file);
-  pdfFilename.textContent = file.name;
-  pdfIframe.src = blobUrl;
-  pdfIframe.style.display = 'block';
-  pdfPlaceholder.style.display = 'none';
-  docSelect.value = '';
-
-  // Upload and convert
-  emptyState.style.display = 'none';
-  loadingOverlay.classList.add('active');
-  loadingOverlay.querySelector('.loading-text').textContent = 'Processing PDF…';
-  loadingOverlay.querySelector('.loading-sub').textContent = 'Extracting text · Calling Gemini 2.0 Flash · Structuring Markdown';
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const r = await fetch('/api/convert', { method: 'POST', body: formData });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || `Server error ${r.status}`);
-
-    mdFilename.textContent = file.name.replace('.pdf', '.md');
-    renderMarkdown(data.markdown, { pages: data.pages, extractor: data.extractor, warnings: data.warnings });
-  } catch (e) {
-    emptyState.querySelector('.empty-title').textContent = 'Conversion failed';
-    emptyState.querySelector('.empty-sub').textContent = e.message;
-    emptyState.style.display = 'flex';
-  } finally {
-    loadingOverlay.classList.remove('active');
-  }
 });
 
 // ── COPY TO CLIPBOARD ────────────────────────────────────────────

@@ -1,0 +1,2 @@
+Read SPEC.md and come up with a PLAN.MD document which will build this project step by step (as a TODO list) using uv latest python. This PLAN shoudl allow either Codex or Claude to build this project, the GEMINI API Key is stored in a local .env file so use dotenv. 
+First of all survey the files and tell me do you have any questions about what needs to be done?
