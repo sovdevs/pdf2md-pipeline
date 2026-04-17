@@ -136,6 +136,48 @@
   }
   .tab:hover { background: var(--grey-100); color: var(--grey-600); }
   .tab.active { background: var(--blue); color: var(--white); }
+  .tab.locked { color: var(--grey-400); opacity: 0.6; }
+  .tab.locked:hover { background: transparent; color: var(--grey-400); }
+  .tab.locked .lock-icon { margin-left: 4px; opacity: 0.6; }
+
+  /* ── RAW LOCK OVERLAY ───────────────────────────────────────── */
+  #raw-lock {
+    position: absolute; inset: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(248,250,252,0.92); backdrop-filter: blur(6px);
+    flex-direction: column; gap: 16px;
+  }
+  #raw-lock.hidden { display: none; }
+  .lock-card {
+    background: var(--white); border: 1px solid var(--grey-200);
+    border-radius: 10px; padding: 28px 32px; text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-width: 320px; width: 100%;
+  }
+  .lock-card svg { color: var(--grey-400); margin-bottom: 12px; }
+  .lock-card h3 { font-size: 15px; font-weight: 600; color: var(--grey-800); margin-bottom: 6px; }
+  .lock-card p { font-size: 12px; color: var(--grey-400); margin-bottom: 18px; line-height: 1.5; }
+  .lock-input-row { display: flex; gap: 8px; }
+  .lock-input-row input {
+    flex: 1; border: 1px solid var(--grey-200); border-radius: 6px;
+    padding: 8px 12px; font-size: 13px; font-family: var(--font-mono);
+    color: var(--grey-800); outline: none;
+    transition: border-color 0.15s;
+  }
+  .lock-input-row input:focus { border-color: var(--blue); }
+  .lock-input-row input.error { border-color: #ef4444; animation: shake 0.3s ease; }
+  .lock-input-row button {
+    background: var(--blue); color: var(--white); border: none;
+    border-radius: 6px; padding: 8px 14px; font-size: 13px;
+    font-weight: 500; cursor: pointer; font-family: var(--font-sans);
+    transition: background 0.15s;
+  }
+  .lock-input-row button:hover { background: var(--blue-dim); }
+  .lock-error { font-size: 11px; color: #ef4444; min-height: 16px; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
 
   /* ── PDF PANE ───────────────────────────────────────────────── */
   #pdf-container {
@@ -328,7 +370,7 @@
       <span class="filename-tag" id="md-filename">—</span>
       <div class="tabs">
         <button class="tab active" data-tab="rendered">Rendered</button>
-        <button class="tab" data-tab="raw">Raw MD</button>
+        <button class="tab locked" data-tab="raw" id="raw-tab-btn">Raw MD <svg class="lock-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></button>
         <button class="tab" data-tab="diff" id="diff-tab-btn">Diff vs Reference</button>
       </div>
     </div>
@@ -368,6 +410,18 @@
 
       <!-- Raw tab -->
       <div class="md-panel" id="raw-panel">
+        <div id="raw-lock">
+          <div class="lock-card">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <h3>Raw output is locked</h3>
+            <p>Enter the access code to view and copy the raw Markdown output.</p>
+            <div class="lock-input-row">
+              <input type="password" id="lock-input" placeholder="Access code" autocomplete="off"/>
+              <button id="lock-submit">Unlock</button>
+            </div>
+            <div class="lock-error" id="lock-error"></div>
+          </div>
+        </div>
         <div id="raw-copy-bar">
           <button id="copy-btn">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
@@ -420,6 +474,8 @@ const DOCS = {
 let currentMarkdown = '';
 let activeTab = 'rendered';
 let currentDocKey = null;
+let rawUnlocked = false;
+const RAW_PASSWORD = 'pdf2md2026';
 
 // ── ELEMENTS ────────────────────────────────────────────────────
 const docSelect      = document.getElementById('doc-select');
@@ -439,6 +495,11 @@ const rawText        = document.getElementById('raw-text');
 const emptyState     = document.getElementById('empty-state');
 const loadingOverlay = document.getElementById('loading-overlay');
 const copyBtn        = document.getElementById('copy-btn');
+const rawTabBtn      = document.getElementById('raw-tab-btn');
+const rawLock        = document.getElementById('raw-lock');
+const lockInput      = document.getElementById('lock-input');
+const lockSubmit     = document.getElementById('lock-submit');
+const lockError      = document.getElementById('lock-error');
 const statPages      = document.getElementById('stat-pages');
 const statExtractor  = document.getElementById('stat-extractor');
 const statWarnings   = document.getElementById('stat-warnings');
@@ -546,7 +607,10 @@ function renderMarkdown(markdown, stats = null) {
 // ── TAB SWITCHING ────────────────────────────────────────────────
 function setTab(tab) {
   activeTab = tab;
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab').forEach(t => {
+    const isActive = t.dataset.tab === tab;
+    t.classList.toggle('active', isActive && !(t.dataset.tab === 'raw' && !rawUnlocked));
+  });
   renderedPanel.classList.toggle('active', tab === 'rendered');
   rawPanel.classList.toggle('active', tab === 'raw');
   diffPanel.classList.toggle('active', tab === 'diff');
@@ -554,8 +618,40 @@ function setTab(tab) {
 }
 
 document.querySelectorAll('.tab').forEach(btn => {
-  btn.addEventListener('click', () => setTab(btn.dataset.tab));
+  btn.addEventListener('click', () => {
+    if (btn.dataset.tab === 'raw' && !rawUnlocked) {
+      // Show the raw panel with lock overlay visible, but don't mark tab active
+      renderedPanel.classList.remove('active');
+      diffPanel.classList.remove('active');
+      rawPanel.classList.add('active');
+      lockInput.focus();
+    } else {
+      setTab(btn.dataset.tab);
+    }
+  });
 });
+
+// ── RAW UNLOCK ───────────────────────────────────────────────────
+function attemptUnlock() {
+  if (lockInput.value === RAW_PASSWORD) {
+    rawUnlocked = true;
+    rawLock.classList.add('hidden');
+    rawTabBtn.classList.remove('locked');
+    rawTabBtn.querySelector('.lock-icon').remove();
+    setTab('raw');
+    lockInput.value = '';
+    lockError.textContent = '';
+  } else {
+    lockError.textContent = 'Incorrect access code.';
+    lockInput.classList.add('error');
+    lockInput.value = '';
+    setTimeout(() => lockInput.classList.remove('error'), 400);
+    lockInput.focus();
+  }
+}
+
+lockSubmit.addEventListener('click', attemptUnlock);
+lockInput.addEventListener('keydown', e => { if (e.key === 'Enter') attemptUnlock(); });
 
 // ── DIFF RENDERER ────────────────────────────────────────────────
 const CONTEXT_LINES = 4;  // unchanged lines to show around each change
