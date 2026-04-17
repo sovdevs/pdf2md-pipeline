@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF → Markdown Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:       #1a2744;
+    --navy-light: #243359;
+    --navy-dark:  #111b33;
+    --blue:       #3b82f6;
+    --blue-light: #60a5fa;
+    --blue-dim:   #1d4ed8;
+    --white:      #ffffff;
+    --grey-50:    #f8fafc;
+    --grey-100:   #f1f5f9;
+    --grey-200:   #e2e8f0;
+    --grey-400:   #94a3b8;
+    --grey-600:   #475569;
+    --grey-800:   #1e293b;
+    --green:      #10b981;
+    --amber:      #f59e0b;
+    --bar-h:      64px;
+    --font-sans:  'IBM Plex Sans', sans-serif;
+    --font-mono:  'IBM Plex Mono', monospace;
+    --font-serif: 'IBM Plex Serif', serif;
+  }
+
+  html, body { height: 100%; overflow: hidden; font-family: var(--font-sans); background: var(--grey-100); }
+
+  /* ── TOP BAR ────────────────────────────────────────────────── */
+  #topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: var(--bar-h);
+    background: var(--navy); display: flex; align-items: center;
+    padding: 0 20px; gap: 16px; z-index: 100;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+  }
+
+  .brand { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+  .brand-title {
+    font-size: 15px; font-weight: 600; color: var(--white);
+    letter-spacing: -0.01em; line-height: 1;
+  }
+  .brand-sub {
+    font-size: 10px; font-weight: 400; color: rgba(255,255,255,0.45);
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+
+  .divider { width: 1px; height: 28px; background: rgba(255,255,255,0.12); flex-shrink: 0; }
+
+  .bar-label { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 0.05em; text-transform: uppercase; flex-shrink: 0; }
+
+  #doc-select {
+    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
+    color: var(--white); font-family: var(--font-sans); font-size: 13px;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+    padding-right: 30px; min-width: 260px;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+  #doc-select:hover { border-color: rgba(255,255,255,0.3); background-color: rgba(255,255,255,0.1); }
+  #doc-select:focus { outline: none; border-color: var(--blue); }
+  #doc-select option { background: var(--navy-dark); color: var(--white); }
+
+  .spacer { flex: 1; }
+
+  /* Upload zone */
+  #upload-zone { display: flex; align-items: center; gap: 10px; }
+
+  #upload-btn {
+    background: var(--blue); color: var(--white); border: none;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    padding: 8px 16px; border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; gap: 7px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  #upload-btn:hover { background: var(--blue-dim); }
+  #upload-btn:active { transform: scale(0.98); }
+  #upload-btn svg { flex-shrink: 0; }
+
+  #server-note { font-size: 11px; color: rgba(255,255,255,0.35); font-style: italic; }
+  #file-input { display: none; }
+
+  /* ── MAIN LAYOUT ────────────────────────────────────────────── */
+  #layout {
+    position: fixed; top: var(--bar-h); left: 0; right: 0; bottom: 0;
+    display: grid; grid-template-columns: 1fr 1fr;
+  }
+
+  .pane {
+    display: flex; flex-direction: column;
+    overflow: hidden; position: relative;
+  }
+  #pane-pdf { border-right: 1px solid var(--grey-200); background: #525659; }
+  #pane-md  { background: var(--white); }
+
+  .pane-header {
+    height: 40px; display: flex; align-items: center; padding: 0 16px;
+    border-bottom: 1px solid var(--grey-200); gap: 12px; flex-shrink: 0;
+  }
+  #pane-pdf .pane-header { background: #3c3f41; border-color: rgba(255,255,255,0.1); }
+  #pane-md  .pane-header { background: var(--grey-50); }
+
+  .pane-label {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  #pane-pdf .pane-label { color: rgba(255,255,255,0.55); }
+  #pane-md  .pane-label { color: var(--grey-400); }
+
+  .filename-tag {
+    font-size: 12px; font-family: var(--font-mono);
+    padding: 2px 8px; border-radius: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;
+  }
+  #pane-pdf .filename-tag { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); }
+  #pane-md  .filename-tag { background: var(--grey-200); color: var(--grey-600); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; margin-left: auto; }
+  .tab {
+    font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 4px;
+    cursor: pointer; border: none; background: transparent;
+    font-family: var(--font-sans); color: var(--grey-400);
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab:hover { background: var(--grey-100); color: var(--grey-600); }
+  .tab.active { background: var(--blue); color: var(--white); }
+
+  /* ── PDF PANE ───────────────────────────────────────────────── */
+  #pdf-container {
+    flex: 1; overflow: hidden; position: relative;
+  }
+  #pdf-iframe {
+    width: 100%; height: 100%; border: none; display: block;
+  }
+  #pdf-placeholder {
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px; height: 100%;
+    color: rgba(255,255,255,0.3); font-size: 14px;
+  }
+
+  /* ── MD PANE ────────────────────────────────────────────────── */
+  #md-container { flex: 1; overflow: hidden; position: relative; }
+
+  .md-panel { position: absolute; inset: 0; overflow-y: auto; padding: 24px 28px; display: none; }
+  .md-panel.active { display: block; }
+
+  /* Metadata card */
+  #meta-card {
+    background: var(--grey-50); border: 1px solid var(--grey-200);
+    border-left: 3px solid var(--blue); border-radius: 6px;
+    padding: 14px 18px; margin-bottom: 24px;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 24px;
+  }
+  .meta-row { display: flex; flex-direction: column; gap: 2px; }
+  .meta-key { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--grey-400); }
+  .meta-val { font-size: 13px; font-weight: 500; color: var(--grey-800); font-family: var(--font-serif); }
+  .meta-val.unknown { color: var(--grey-400); font-style: italic; font-family: var(--font-sans); }
+
+  /* Rendered markdown typography */
+  #rendered-body { font-family: var(--font-serif); color: var(--grey-800); line-height: 1.75; font-size: 14px; }
+  #rendered-body h1 { font-family: var(--font-sans); font-size: 20px; font-weight: 600; color: var(--navy); margin: 0 0 20px; padding-bottom: 10px; border-bottom: 2px solid var(--grey-200); line-height: 1.3; }
+  #rendered-body h2 { font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--navy); margin: 28px 0 12px; padding-left: 10px; border-left: 3px solid var(--blue); }
+  #rendered-body h3 { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--grey-800); margin: 20px 0 8px; }
+  #rendered-body h4 { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--grey-600); margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.03em; }
+  #rendered-body p { margin: 0 0 12px; }
+  #rendered-body ul, #rendered-body ol { margin: 8px 0 12px 20px; }
+  #rendered-body li { margin-bottom: 4px; }
+  #rendered-body table { width: 100%; border-collapse: collapse; font-family: var(--font-sans); font-size: 12px; margin: 16px 0; }
+  #rendered-body th { background: var(--navy); color: var(--white); padding: 8px 10px; text-align: left; font-weight: 500; }
+  #rendered-body td { padding: 7px 10px; border-bottom: 1px solid var(--grey-200); }
+  #rendered-body tr:nth-child(even) td { background: var(--grey-50); }
+  #rendered-body code { font-family: var(--font-mono); font-size: 12px; background: var(--grey-100); padding: 1px 5px; border-radius: 3px; }
+  #rendered-body pre { background: var(--grey-100); padding: 14px; border-radius: 6px; overflow-x: auto; margin: 12px 0; }
+  #rendered-body blockquote { border-left: 3px solid var(--grey-200); padding-left: 14px; color: var(--grey-600); font-style: italic; margin: 12px 0; }
+  #rendered-body hr { border: none; border-top: 1px solid var(--grey-200); margin: 20px 0; }
+
+  /* Raw tab */
+  #raw-panel { display: none; }
+  #raw-panel.active { display: flex; flex-direction: column; gap: 0; }
+  #raw-copy-bar {
+    display: flex; justify-content: flex-end; padding: 8px 12px;
+    border-bottom: 1px solid var(--grey-200); background: var(--grey-50);
+    position: sticky; top: 0; z-index: 1;
+  }
+  #copy-btn {
+    font-size: 12px; font-weight: 500; font-family: var(--font-sans);
+    padding: 5px 12px; border-radius: 5px; border: 1px solid var(--grey-200);
+    background: var(--white); color: var(--grey-600); cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #copy-btn:hover { background: var(--grey-100); border-color: var(--grey-400); }
+  #copy-btn.copied { background: var(--green); color: var(--white); border-color: var(--green); }
+  #raw-text {
+    font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
+    color: var(--grey-800); white-space: pre-wrap; word-break: break-all;
+    padding: 20px 24px; flex: 1;
+  }
+
+  /* Stats bar */
+  #stats-bar {
+    height: 32px; flex-shrink: 0; display: flex; align-items: center;
+    padding: 0 16px; gap: 16px; border-top: 1px solid var(--grey-200);
+    background: var(--grey-50);
+  }
+  .stat-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--grey-400); }
+  .stat-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .stat-dot.green { background: var(--green); }
+  .stat-dot.amber { background: var(--amber); }
+  .stat-dot.blue  { background: var(--blue); }
+
+  /* ── LOADING OVERLAY ────────────────────────────────────────── */
+  #loading-overlay {
+    display: none; position: absolute; inset: 0; z-index: 50;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+  }
+  #loading-overlay.active { display: flex; }
+  .spinner {
+    width: 36px; height: 36px; border: 3px solid var(--grey-200);
+    border-top-color: var(--blue); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--grey-600); font-weight: 500; }
+  .loading-sub  { font-size: 11px; color: var(--grey-400); margin-top: -10px; }
+
+  /* ── EMPTY STATE ────────────────────────────────────────────── */
+  #empty-state {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 10px;
+  }
+  .empty-icon { opacity: 0.15; }
+  .empty-title { font-size: 14px; font-weight: 500; color: var(--grey-600); }
+  .empty-sub   { font-size: 12px; color: var(--grey-400); }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--grey-200); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--grey-400); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header id="topbar">
+  <div class="brand">
+    <span class="brand-title">PDF → Markdown Pipeline</span>
+    <span class="brand-sub">Italian Urban Planning Documents</span>
+  </div>
+
+  <div class="divider"></div>
+  <span class="bar-label">Example</span>
+
+  <select id="doc-select">
+    <option value="">— Select a document —</option>
+    <option value="nta">NTA Mariano Comense — Full Document</option>
+    <option value="tabella">Tabella Oneri 2026 — Fee Schedule</option>
+  </select>
+
+  <div class="spacer"></div>
+
+  <div id="upload-zone">
+    <span id="server-note">Upload available when demo server is running</span>
+    <button id="upload-btn" style="display:none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Try your own PDF
+    </button>
+    <input type="file" id="file-input" accept=".pdf">
+  </div>
+</header>
+
+<!-- MAIN LAYOUT -->
+<div id="layout">
+
+  <!-- LEFT: PDF PANE -->
+  <div class="pane" id="pane-pdf">
+    <div class="pane-header">
+      <span class="pane-label">Source PDF</span>
+      <span class="filename-tag" id="pdf-filename">No document selected</span>
+    </div>
+    <div id="pdf-container">
+      <iframe id="pdf-iframe" title="PDF Viewer"></iframe>
+      <div id="pdf-placeholder" style="display:flex">
+        <svg class="empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span style="color:rgba(255,255,255,0.35);font-size:13px">Select a document above</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: MARKDOWN PANE -->
+  <div class="pane" id="pane-md">
+    <div class="pane-header">
+      <span class="pane-label">Markdown Output</span>
+      <span class="filename-tag" id="md-filename">—</span>
+      <div class="tabs">
+        <button class="tab active" data-tab="rendered">Rendered</button>
+        <button class="tab" data-tab="raw">Raw MD</button>
+      </div>
+    </div>
+
+    <div id="md-container">
+      <!-- Loading overlay -->
+      <div id="loading-overlay">
+        <div class="spinner"></div>
+        <span class="loading-text">Processing PDF…</span>
+        <span class="loading-sub">Extracting text · Calling Gemini 2.0 Flash · Structuring Markdown</span>
+      </div>
+
+      <!-- Empty state -->
+      <div id="empty-state">
+        <svg class="empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span class="empty-title">No document loaded</span>
+        <span class="empty-sub">Select an example from the dropdown above</span>
+      </div>
+
+      <!-- Rendered tab -->
+      <div class="md-panel" id="rendered-panel">
+        <div id="meta-card" style="display:none"></div>
+        <div id="rendered-body"></div>
+      </div>
+
+      <!-- Raw tab -->
+      <div class="md-panel" id="raw-panel">
+        <div id="raw-copy-bar">
+          <button id="copy-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy to clipboard
+          </button>
+        </div>
+        <pre id="raw-text"></pre>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div id="stats-bar">
+      <div class="stat-item">
+        <div class="stat-dot blue"></div>
+        <span id="stat-pages">—</span>
+      </div>
+      <div class="stat-item">
+        <div class="stat-dot green"></div>
+        <span id="stat-extractor">—</span>
+      </div>
+      <div class="stat-item" id="stat-warnings-wrap" style="display:none">
+        <div class="stat-dot amber"></div>
+        <span id="stat-warnings"></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── DATA MAP ────────────────────────────────────────────────────
+const DOCS = {
+  nta: {
+    label: 'NTA_PdR_PdS_Parte prima.pdf',
+    pdf:   '../attachments/NTA_PdR_PdS_Parte prima.pdf',
+    md:    'data/NTA_PdR_PdS.md',
+  },
+  tabella: {
+    label: 'tabella-oneri-e-costo-2026 (2).pdf',
+    pdf:   '../attachments/tabella-oneri-e-costo-2026 (2).pdf',
+    md:    'data/tabella_oneri.md',
+  },
+};
+
+// ── STATE ───────────────────────────────────────────────────────
+let currentMarkdown = '';
+let activeTab = 'rendered';
+
+// ── ELEMENTS ────────────────────────────────────────────────────
+const docSelect      = document.getElementById('doc-select');
+const pdfIframe      = document.getElementById('pdf-iframe');
+const pdfPlaceholder = document.getElementById('pdf-placeholder');
+const pdfFilename    = document.getElementById('pdf-filename');
+const mdFilename     = document.getElementById('md-filename');
+const metaCard       = document.getElementById('meta-card');
+const renderedBody   = document.getElementById('rendered-body');
+const renderedPanel  = document.getElementById('rendered-panel');
+const rawPanel       = document.getElementById('raw-panel');
+const rawText        = document.getElementById('raw-text');
+const emptyState     = document.getElementById('empty-state');
+const loadingOverlay = document.getElementById('loading-overlay');
+const uploadBtn      = document.getElementById('upload-btn');
+const fileInput      = document.getElementById('file-input');
+const serverNote     = document.getElementById('server-note');
+const copyBtn        = document.getElementById('copy-btn');
+const statPages      = document.getElementById('stat-pages');
+const statExtractor  = document.getElementById('stat-extractor');
+const statWarnings   = document.getElementById('stat-warnings');
+const statWarningsWrap = document.getElementById('stat-warnings-wrap');
+
+// ── SERVER DETECTION ────────────────────────────────────────────
+async function checkServer() {
+  try {
+    const r = await fetch('/api/health', { method: 'GET', signal: AbortSignal.timeout(1500) });
+    if (r.ok) {
+      window.DEMO_SERVER_AVAILABLE = true;
+      uploadBtn.style.display = 'flex';
+      serverNote.style.display = 'none';
+    }
+  } catch {
+    window.DEMO_SERVER_AVAILABLE = false;
+  }
+}
+checkServer();
+
+// ── YAML FRONT MATTER PARSER ────────────────────────────────────
+function parseFrontMatter(markdown) {
+  const match = markdown.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
+  if (!match) return { meta: {}, body: markdown };
+  const meta = {};
+  match[1].split('\n').forEach(line => {
+    const colon = line.indexOf(':');
+    if (colon < 0) return;
+    const key = line.slice(0, colon).trim();
+    const val = line.slice(colon + 1).trim();
+    if (key) meta[key] = val;
+  });
+  return { meta, body: markdown.slice(match[0].length) };
+}
+
+// ── RENDER METADATA CARD ────────────────────────────────────────
+const META_LABELS = { titolo: 'Title', comune: 'Municipality', tipo: 'Document Type', anno: 'Year' };
+
+function renderMetaCard(meta) {
+  const fields = ['titolo', 'comune', 'tipo', 'anno'];
+  const hasAny = fields.some(f => meta[f]);
+  if (!hasAny) { metaCard.style.display = 'none'; return; }
+
+  metaCard.style.display = 'grid';
+  metaCard.innerHTML = fields.map(f => {
+    const val = meta[f] || '';
+    const isUnknown = !val || val === 'UNKNOWN';
+    return `<div class="meta-row">
+      <span class="meta-key">${META_LABELS[f] || f}</span>
+      <span class="meta-val ${isUnknown ? 'unknown' : ''}">${isUnknown ? 'Not found' : val}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER MARKDOWN ─────────────────────────────────────────────
+function renderMarkdown(markdown, stats = null) {
+  currentMarkdown = markdown;
+  const { meta, body } = parseFrontMatter(markdown);
+
+  renderMetaCard(meta);
+
+  marked.setOptions({ breaks: true, gfm: true });
+  renderedBody.innerHTML = marked.parse(body);
+  rawText.textContent = markdown;
+
+  emptyState.style.display = 'none';
+  setTab(activeTab);
+
+  // Stats
+  if (stats) {
+    statPages.textContent = `${stats.pages} page${stats.pages !== 1 ? 's' : ''}`;
+    statExtractor.textContent = `extracted via ${stats.extractor}`;
+    if (stats.warnings && stats.warnings.length > 0) {
+      statWarnings.textContent = `${stats.warnings.length} heading warning${stats.warnings.length !== 1 ? 's' : ''}`;
+      statWarningsWrap.style.display = 'flex';
+    } else {
+      statWarningsWrap.style.display = 'none';
+    }
+  } else {
+    statPages.textContent = 'pre-converted';
+    statExtractor.textContent = 'Docling + Gemini 2.0 Flash';
+    statWarningsWrap.style.display = 'none';
+  }
+}
+
+// ── TAB SWITCHING ────────────────────────────────────────────────
+function setTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderedPanel.classList.toggle('active', tab === 'rendered');
+  rawPanel.classList.toggle('active', tab === 'raw');
+}
+
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => setTab(btn.dataset.tab));
+});
+
+// ── LOAD PRE-BUILT DOCUMENT ──────────────────────────────────────
+async function loadDoc(key) {
+  const doc = DOCS[key];
+  if (!doc) return;
+
+  // PDF pane
+  pdfFilename.textContent = doc.label;
+  pdfIframe.src = doc.pdf;
+  pdfIframe.style.display = 'block';
+  pdfPlaceholder.style.display = 'none';
+
+  // MD pane — show loading briefly
+  emptyState.style.display = 'none';
+  loadingOverlay.classList.add('active');
+  loadingOverlay.querySelector('.loading-text').textContent = 'Loading markdown…';
+  loadingOverlay.querySelector('.loading-sub').textContent = 'Fetching pre-converted output';
+
+  try {
+    const r = await fetch(doc.md);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const md = await r.text();
+    mdFilename.textContent = doc.md.split('/').pop();
+    renderMarkdown(md);
+  } catch (e) {
+    emptyState.querySelector('.empty-title').textContent = 'Failed to load markdown';
+    emptyState.querySelector('.empty-sub').textContent = e.message;
+    emptyState.style.display = 'flex';
+  } finally {
+    loadingOverlay.classList.remove('active');
+  }
+}
+
+docSelect.addEventListener('change', () => {
+  if (docSelect.value) loadDoc(docSelect.value);
+});
+
+// ── PDF UPLOAD ───────────────────────────────────────────────────
+uploadBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  fileInput.value = '';
+
+  // Show PDF blob in left pane
+  const blobUrl = URL.createObjectURL(file);
+  pdfFilename.textContent = file.name;
+  pdfIframe.src = blobUrl;
+  pdfIframe.style.display = 'block';
+  pdfPlaceholder.style.display = 'none';
+  docSelect.value = '';
+
+  // Upload and convert
+  emptyState.style.display = 'none';
+  loadingOverlay.classList.add('active');
+  loadingOverlay.querySelector('.loading-text').textContent = 'Processing PDF…';
+  loadingOverlay.querySelector('.loading-sub').textContent = 'Extracting text · Calling Gemini 2.0 Flash · Structuring Markdown';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const r = await fetch('/api/convert', { method: 'POST', body: formData });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || `Server error ${r.status}`);
+
+    mdFilename.textContent = file.name.replace('.pdf', '.md');
+    renderMarkdown(data.markdown, { pages: data.pages, extractor: data.extractor, warnings: data.warnings });
+  } catch (e) {
+    emptyState.querySelector('.empty-title').textContent = 'Conversion failed';
+    emptyState.querySelector('.empty-sub').textContent = e.message;
+    emptyState.style.display = 'flex';
+  } finally {
+    loadingOverlay.classList.remove('active');
+  }
+});
+
+// ── COPY TO CLIPBOARD ────────────────────────────────────────────
+copyBtn.addEventListener('click', async () => {
+  if (!currentMarkdown) return;
+  await navigator.clipboard.writeText(currentMarkdown);
+  copyBtn.classList.add('copied');
+  copyBtn.childNodes[1].textContent = ' Copied!';
+  setTimeout(() => {
+    copyBtn.classList.remove('copied');
+    copyBtn.childNodes[1].textContent = ' Copy to clipboard';
+  }, 2000);
+});
+
+// ── AUTO-LOAD FIRST EXAMPLE ──────────────────────────────────────
+window.addEventListener('load', () => {
+  docSelect.value = 'nta';
+  loadDoc('nta');
+});
+</script>
+</body>
+</html>
