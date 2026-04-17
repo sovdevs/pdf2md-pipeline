@@ -455,16 +455,37 @@ function renderMetaCard(meta) {
 }
 
 // ── RENDER MARKDOWN ─────────────────────────────────────────────
-// Split large documents by ## sections to avoid marked.js recursion limits
+// Split into small line-batches to avoid marked.js recursion on large docs.
+// We split at heading boundaries so headings are never orphaned mid-chunk.
+const CHUNK_LINES = 60;
+
 function renderBodyChunked(body) {
   marked.setOptions({ breaks: true, gfm: true });
-  // Split on lines that start with ## (keep the delimiter)
-  const chunks = body.split(/(?=^## )/m);
   renderedBody.innerHTML = '';
+
+  const lines = body.split('\n');
+  const chunks = [];
+  let current = [];
+
+  for (const line of lines) {
+    // Start a new chunk at any heading IF current chunk is big enough
+    if (current.length >= CHUNK_LINES && /^#{1,4} /.test(line)) {
+      chunks.push(current.join('\n'));
+      current = [];
+    }
+    current.push(line);
+  }
+  if (current.length) chunks.push(current.join('\n'));
+
   for (const chunk of chunks) {
     if (!chunk.trim()) continue;
     const div = document.createElement('div');
-    div.innerHTML = marked.parse(chunk);
+    try {
+      div.innerHTML = marked.parse(chunk);
+    } catch {
+      // Last-resort: render as plain text if a chunk still fails
+      div.innerHTML = `<pre style="white-space:pre-wrap;font-size:12px">${chunk.replace(/</g,'&lt;')}</pre>`;
+    }
     renderedBody.appendChild(div);
   }
 }
@@ -534,9 +555,12 @@ async function loadDoc(key) {
     mdFilename.textContent = doc.md.split('/').pop();
     renderMarkdown(md);
   } catch (e) {
-    emptyState.querySelector('.empty-title').textContent = 'Failed to load markdown';
-    emptyState.querySelector('.empty-sub').textContent = e.message;
-    emptyState.style.display = 'flex';
+    // Only show error state for fetch failures, not render errors
+    if (e.message.startsWith('HTTP')) {
+      emptyState.querySelector('.empty-title').textContent = 'Failed to load markdown';
+      emptyState.querySelector('.empty-sub').textContent = e.message;
+      emptyState.style.display = 'flex';
+    }
   } finally {
     loadingOverlay.classList.remove('active');
   }
