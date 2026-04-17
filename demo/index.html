@@ -455,14 +455,27 @@ function renderMetaCard(meta) {
 }
 
 // ── RENDER MARKDOWN ─────────────────────────────────────────────
+// Split large documents by ## sections to avoid marked.js recursion limits
+function renderBodyChunked(body) {
+  marked.setOptions({ breaks: true, gfm: true });
+  // Split on lines that start with ## (keep the delimiter)
+  const chunks = body.split(/(?=^## )/m);
+  renderedBody.innerHTML = '';
+  for (const chunk of chunks) {
+    if (!chunk.trim()) continue;
+    const div = document.createElement('div');
+    div.innerHTML = marked.parse(chunk);
+    renderedBody.appendChild(div);
+  }
+}
+
 function renderMarkdown(markdown, stats = null) {
   currentMarkdown = markdown;
   const { meta, body } = parseFrontMatter(markdown);
 
   renderMetaCard(meta);
 
-  marked.setOptions({ breaks: true, gfm: true });
-  renderedBody.innerHTML = marked.parse(body);
+  renderBodyChunked(body);
   rawText.textContent = markdown;
 
   emptyState.style.display = 'none';
