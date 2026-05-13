@@ -19,6 +19,8 @@ intermediate/
 
 # All PDFs — binaries, often confidential
 *.pdf
+# Exception: demo attachments must be committed so Netlify can serve them
+!demo/attachments/*.pdf
 
 # Confidential / patient data
 Extension/
