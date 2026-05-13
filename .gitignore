@@ -16,5 +16,16 @@ wheels/
 output/
 retry/
 
+# All PDFs — binaries, often confidential
+*.pdf
+
+# Confidential / patient data
+Extension/
+demo/data/TUCKER_*
+demo/data/Jalen*
+demo/data/Killen*
+
 # macOS
 .DS_Store
+
+me.md

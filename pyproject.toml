@@ -25,6 +25,10 @@ dev = [
 
 [project.scripts]
 pdf2md = "pdf_to_markdown.cli:main"
+pdf2export = "pdf_to_markdown.export_cli:main"
+
+[tool.uv]
+package = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pdf_to_markdown"]
