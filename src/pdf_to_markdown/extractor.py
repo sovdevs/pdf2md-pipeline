@@ -1,8 +1,24 @@
 from dataclasses import dataclass
 from pathlib import Path
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+
+# Tesseract tessdata search order
+_TESSDATA_CANDIDATES = [
+    os.environ.get("TESSDATA_PREFIX", ""),
+    "/opt/homebrew/share/tessdata",   # macOS ARM Homebrew
+    "/usr/local/share/tessdata",      # macOS Intel Homebrew
+    "/usr/share/tessdata",            # Linux
+]
+
+
+def _tessdata_path() -> str | None:
+    for p in _TESSDATA_CANDIDATES:
+        if p and Path(p).exists():
+            return p
+    return None
 
 
 class ExtractionError(Exception):
@@ -120,6 +136,42 @@ def extract_with_pymupdf(pdf_path: Path) -> list[PageText]:
     return pages
 
 
+def extract_with_ocr(pdf_path: Path, language: str = "eng+deu") -> list[PageText]:
+    """OCR fallback using PyMuPDF + Tesseract for image-only / scanned PDFs."""
+    import fitz
+
+    tessdata = _tessdata_path()
+    if tessdata is None:
+        raise ExtractionError(
+            "Tesseract tessdata not found. Install Tesseract or set TESSDATA_PREFIX."
+        )
+
+    pages: list[PageText] = []
+    with fitz.open(str(pdf_path)) as doc:
+        for i, page in enumerate(doc, start=1):
+            try:
+                tp = page.get_textpage_ocr(
+                    language=language,
+                    dpi=300,
+                    full=True,
+                    tessdata=tessdata,
+                )
+                txt = page.get_text(textpage=tp).strip()
+            except Exception as e:
+                logger.warning(f"OCR failed on page {i} of {pdf_path.name}: {e}")
+                txt = ""
+            if txt:
+                pages.append(PageText(
+                    page_number=i,
+                    text=txt,
+                    extraction_method="ocr",
+                ))
+
+    if not pages:
+        raise ExtractionError(f"OCR returned no text for {pdf_path.name}")
+    return pages
+
+
 def _is_sparse(pages: list[PageText], pdf_path: Path) -> bool:
     """Return True if Docling output looks suspiciously thin relative to file size."""
     total_chars = sum(len(p.text) for p in pages)
@@ -129,7 +181,10 @@ def _is_sparse(pages: list[PageText], pdf_path: Path) -> bool:
 
 
 def extract_pages(pdf_path: Path) -> list[PageText]:
+    docling_sparse: list[PageText] | None = None
     docling_err: Exception | None = None
+
+    # ── Step 1: Docling ───────────────────────────────────────────────────────
     try:
         pages = extract_with_docling(pdf_path)
         if _is_sparse(pages, pdf_path):
@@ -137,6 +192,7 @@ def extract_pages(pdf_path: Path) -> list[PageText]:
                 f"Docling output suspiciously sparse for {pdf_path.name} "
                 f"({sum(len(p.text) for p in pages)} chars) — falling back to PyMuPDF"
             )
+            docling_sparse = pages  # keep as safety net; don't discard
             raise ValueError("sparse output")
         logger.info(f"Docling extracted {len(pages)} page(s) from {pdf_path.name}")
         return pages
@@ -144,12 +200,31 @@ def extract_pages(pdf_path: Path) -> list[PageText]:
         docling_err = exc
         logger.warning(f"Docling failed for {pdf_path.name}: {exc} — falling back to PyMuPDF")
 
+    # ── Step 2: PyMuPDF ───────────────────────────────────────────────────────
     try:
         pages = extract_with_pymupdf(pdf_path)
         logger.info(f"PyMuPDF extracted {len(pages)} page(s) from {pdf_path.name}")
         return pages
-    except Exception as pymupdf_err:
-        raise ExtractionError(
-            f"Both extractors failed for {pdf_path.name}. "
-            f"Docling: {docling_err}. PyMuPDF: {pymupdf_err}"
-        ) from pymupdf_err
+    except ExtractionError:
+        pass  # fall through to OCR
+
+    # ── Step 3: OCR (Tesseract via PyMuPDF) ──────────────────────────────────
+    try:
+        pages = extract_with_ocr(pdf_path)
+        logger.info(f"OCR extracted {len(pages)} page(s) from {pdf_path.name}")
+        return pages
+    except ExtractionError as ocr_err:
+        logger.warning(f"OCR failed for {pdf_path.name}: {ocr_err}")
+
+    # ── Safety net: use sparse Docling result rather than failing completely ──
+    if docling_sparse:
+        logger.warning(
+            f"All extractors failed for {pdf_path.name} — "
+            f"using sparse Docling OCR result ({sum(len(p.text) for p in docling_sparse)} chars)"
+        )
+        return docling_sparse
+
+    raise ExtractionError(
+        f"All extractors failed for {pdf_path.name} (Docling: {docling_err}). "
+        f"Install Tesseract for OCR support: brew install tesseract tesseract-lang"
+    )

@@ -1,6 +1,6 @@
-# PDF to Markdown — Batch Pipeline
+# SDEP — Structured Document Extraction Pipeline
 
-Converts folders of Italian urban planning PDFs into clean, structured Markdown files ready for LLM/RAG ingestion.
+Converts PDFs into clean Markdown, structured CSV/XLSX, and TMX/CSV translation exports. Handles readable, scanned/OCR, and multi-layout documents with Gemini-assisted extraction.
 
 **Tech stack:** Python 3.12 · Docling (PDF extraction) · PyMuPDF (fallback) · Gemini 2.0 Flash (structure detection) · uv
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF → Markdown Pipeline</title>
+<title>SDEP — Structured Document Extraction Pipeline</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -331,8 +331,8 @@
 <!-- TOP BAR -->
 <header id="topbar">
   <div class="brand">
-    <span class="brand-title">PDF → Markdown Pipeline</span>
-    <span class="brand-sub">Italian Urban Planning Documents</span>
+    <span class="brand-title">SDEP</span>
+    <span class="brand-sub">Structured Document Extraction Pipeline</span>
   </div>
 
   <div class="divider"></div>
@@ -346,6 +346,7 @@
     <option value="jalen">Jalen Clark_Case00943886_20231116.pdf</option>
     <option value="race">2026-02-27_race04_sectional.pdf</option>
     <option value="killen">Killen Karina_Case02573384_20231120.pdf</option>
+    <option value="eredacted">eREDACTED_CaseXXXXX_XXXX_PDFE.pdf</option>
   </select>
 </header>
 
@@ -491,6 +492,11 @@ const DOCS = {
     label: 'Killen Karina_Case02573384_20231120.pdf',
     pdf:   'attachments/Killen Karina_Case02573384_20231120.pdf',
     md:    'data/Killen Karina_Case02573384_20231120.md',
+  },
+  eredacted: {
+    label: 'eREDACTED_CaseXXXXX_XXXX_PDFE.pdf',
+    pdf:   'attachments/eREDACTED_CaseXXXXX_XXXX_PDFE.pdf',
+    md:    'data/eREDACTED_CaseXXXXX_XXXX_PDFE.md',
   },
 };
 

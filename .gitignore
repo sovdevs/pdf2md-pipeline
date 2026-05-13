@@ -15,6 +15,7 @@ wheels/
 # Pipeline output folders
 output/
 retry/
+intermediate/
 
 # All PDFs — binaries, often confidential
 *.pdf

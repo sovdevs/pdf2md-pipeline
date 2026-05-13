@@ -1,0 +1,30 @@
+{
+  "document_type": "generic_invoice",
+  "description": "General-purpose invoice / bill schema",
+  "fields": [
+    {"name": "invoice_number",  "type": "string",   "required": true,  "description": "Invoice or document number"},
+    {"name": "invoice_date",    "type": "date",     "required": true,  "description": "Date the invoice was issued"},
+    {"name": "due_date",        "type": "date",     "required": false, "description": "Payment due date"},
+    {"name": "vendor_name",     "type": "string",   "required": true,  "description": "Name of the issuing company"},
+    {"name": "vendor_address",  "type": "string",   "required": false, "description": "Vendor postal address"},
+    {"name": "client_name",     "type": "string",   "required": false, "description": "Bill-to party name"},
+    {"name": "client_address",  "type": "string",   "required": false, "description": "Bill-to address"},
+    {"name": "subtotal",        "type": "currency", "required": false, "description": "Amount before tax"},
+    {"name": "tax_amount",      "type": "currency", "required": false, "description": "Tax or VAT amount"},
+    {"name": "total_amount",    "type": "currency", "required": true,  "description": "Total amount due"},
+    {"name": "currency",        "type": "string",   "required": false, "description": "Currency code, e.g. USD, EUR"},
+    {"name": "payment_terms",   "type": "string",   "required": false, "description": "Payment terms, e.g. Net 30"}
+  ],
+  "line_items": [
+    {"name": "description",  "type": "string",   "description": "Item or service description"},
+    {"name": "quantity",     "type": "number",   "description": "Quantity"},
+    {"name": "unit_price",   "type": "currency", "description": "Price per unit"},
+    {"name": "amount",       "type": "currency", "description": "Line total"}
+  ],
+  "sheets": {
+    "summary":    "Summary",
+    "line_items": "LineItems",
+    "warnings":   "Warnings",
+    "raw_preview":"RawPreview"
+  }
+}

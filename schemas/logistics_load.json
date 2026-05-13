@@ -1,0 +1,33 @@
+{
+  "document_type": "logistics_load",
+  "description": "Trucking / freight load sheet, BOL, or rate confirmation",
+  "fields": [
+    {"name": "invoice_number",       "type": "string",   "required": false, "description": "Invoice or pro number"},
+    {"name": "load_number",          "type": "string",   "required": true,  "description": "Load or shipment number"},
+    {"name": "bol_number",           "type": "string",   "required": false, "description": "Bill of lading number"},
+    {"name": "carrier",              "type": "string",   "required": true,  "description": "Carrier / trucking company name"},
+    {"name": "shipper",              "type": "string",   "required": false, "description": "Shipper name"},
+    {"name": "consignee",            "type": "string",   "required": false, "description": "Consignee / recipient name"},
+    {"name": "pickup_date",          "type": "date",     "required": false, "description": "Scheduled or actual pickup date"},
+    {"name": "delivery_date",        "type": "date",     "required": false, "description": "Scheduled or actual delivery date"},
+    {"name": "origin",               "type": "string",   "required": false, "description": "Origin city/state"},
+    {"name": "destination",          "type": "string",   "required": false, "description": "Destination city/state"},
+    {"name": "miles",                "type": "number",   "required": false, "description": "Total miles"},
+    {"name": "rate",                 "type": "currency", "required": false, "description": "Base rate"},
+    {"name": "fuel_surcharge",       "type": "currency", "required": false, "description": "Fuel surcharge amount"},
+    {"name": "accessorial_charges",  "type": "currency", "required": false, "description": "Accessorial / extra charges"},
+    {"name": "total_amount",         "type": "currency", "required": true,  "description": "Total invoice amount"}
+  ],
+  "line_items": [
+    {"name": "description", "type": "string",   "description": "Charge description"},
+    {"name": "quantity",    "type": "number",   "description": "Quantity or units"},
+    {"name": "unit_price",  "type": "currency", "description": "Rate per unit"},
+    {"name": "amount",      "type": "currency", "description": "Line total"}
+  ],
+  "sheets": {
+    "summary":    "Summary",
+    "line_items": "LineItems",
+    "warnings":   "Warnings",
+    "raw_preview":"RawPreview"
+  }
+}
