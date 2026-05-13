@@ -1,0 +1,29 @@
+{
+  "summary_sheet": "Summary",
+  "summary_start_row": 2,
+  "summary_columns": {
+    "file_name":      "A",
+    "document_type":  "B",
+    "invoice_number": "C",
+    "invoice_date":   "D",
+    "due_date":       "E",
+    "vendor_name":    "F",
+    "client_name":    "G",
+    "total_amount":   "H",
+    "currency":       "I",
+    "confidence":     "J",
+    "review_status":  "K"
+  },
+  "line_items_sheet": "LineItems",
+  "line_items_start_row": 2,
+  "line_item_columns": {
+    "file_name":   "A",
+    "document_id": "B",
+    "description": "C",
+    "quantity":    "D",
+    "unit_price":  "E",
+    "amount":      "F"
+  },
+  "warnings_sheet": "Warnings",
+  "warnings_start_row": 2
+}

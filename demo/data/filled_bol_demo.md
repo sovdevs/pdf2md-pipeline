@@ -1,0 +1,96 @@
+---
+anno: 2026
+comune: UNKNOWN
+tipo: BOL
+titolo: STRAIGHT BILL OF LADING · SHORT FORM
+---
+
+# STRAIGHT BILL OF LADING · SHORT FORM
+
+(NOT NEGOTIABLE UNLESS CONSIGNED TO ORDER)
+
+BOL NUMBER:
+
+BOL-10482
+
+DATE:
+
+2026-05-12
+
+FREIGHT BILL PRO NO.:
+
+PRO-88210
+
+SHIPMENT ID NO.:
+
+SID-4421
+
+CARRIER:
+
+Blue Line Freight LLC
+
+PHONE:
+
++44 161 555 0182
+
+CARRIER ADDRESS:
+
+12 Freight Way, Manchester, M12 4PP, UK
+
+TRAILER NO.:
+
+TRL-7734-B
+
+FROM (SHIPPER):
+
+Northside Foods Ltd
+
+Unit 7, Trafford Park Manchester, M17 1SN, UK
+
+TEL: +44 161 555 0201
+
+TO (CONSIGNEE):
+
+Midlands Retail Distribution 45 Logistics Park, Solihull Birmingham, B90 4WQ, UK
+
+TEL: +44 121 555 0349
+
+ROUTE:
+
+Manchester · Birmingham (M6/M42)
+
+PICKUP DATE:
+
+2026-05-12
+
+DELIVERY DATE:
+
+2026-05-13
+
+TOTAL WEIGHT:
+
+12,450 kg
+
+TOTAL CHARGES:
+
+£902.50
+
+FREIGHT CHARGES:
+
+PREPAID
+
+COD AMOUNT:
+
+N/A
+
+SHIPPER SIGNATURE:
+
+________________________
+
+CARRIER SIGNATURE:
+
+_____________________
+
+Northside Foods Ltd
+
+Blue Line Freight LLC

@@ -292,6 +292,34 @@
   /* Diff panel */
   #diff-panel { display: none; flex-direction: column; }
   #diff-panel.active { display: flex; }
+
+  /* Excel panel */
+  #excel-panel { display: none; flex-direction: column; overflow-y: auto; padding: 20px 24px; gap: 0; }
+  #excel-panel.active { display: flex; }
+  .xl-header { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--grey-200); flex-wrap: wrap; }
+  .xl-download { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--navy); color: var(--white); border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; text-decoration: none; transition: background 0.15s; }
+  .xl-download:hover { background: var(--navy-light); }
+  .xl-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; }
+  .xl-badge-ok      { background: #d1fae5; color: #065f46; }
+  .xl-badge-warning { background: #fef3c7; color: #92400e; }
+  .xl-badge-error   { background: #fee2e2; color: #991b1b; }
+  .xl-badge-unknown { background: var(--grey-100); color: var(--grey-600); }
+  .xl-confidence { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--grey-600); }
+  .xl-conf-bar { width: 80px; height: 6px; background: var(--grey-200); border-radius: 3px; overflow: hidden; }
+  .xl-conf-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+  .xl-conf-high { background: #10b981; }
+  .xl-conf-mid  { background: #f59e0b; }
+  .xl-conf-low  { background: #ef4444; }
+  .xl-section { margin-bottom: 24px; }
+  .xl-section-title { font-size: 10px; font-weight: 700; color: var(--grey-400); text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 10px; }
+  .xl-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--font-sans); }
+  .xl-table th { background: var(--grey-100); padding: 6px 10px; text-align: left; font-weight: 600; color: var(--grey-800); border-bottom: 2px solid var(--grey-200); white-space: nowrap; }
+  .xl-table td { padding: 5px 10px; border-bottom: 1px solid var(--grey-100); color: var(--grey-800); vertical-align: top; }
+  .xl-table tr:last-child td { border-bottom: none; }
+  .xl-table tr:hover td { background: var(--grey-50); }
+  .xl-null { color: var(--grey-400); font-style: italic; }
+  .xl-field-name { font-family: var(--font-mono); font-size: 11px; color: var(--grey-600); }
+  .xl-empty { padding: 20px; text-align: center; color: var(--grey-400); font-size: 13px; }
   #diff-note {
     padding: 8px 16px; font-size: 11px; color: var(--grey-600);
     background: var(--grey-50); border-bottom: 1px solid var(--grey-200);
@@ -344,6 +372,8 @@
     <option value="tabella">tabella-oneri-e-costo-2026 (2).pdf</option>
     <option value="race">2026-02-27_race04_sectional.pdf</option>
     <option value="eredacted">eREDACTED_CaseXXXXX_XXXX_PDFE.pdf</option>
+    <option value="bol">TNGImq-bill-of-lading-template.pdf (blank)</option>
+    <option value="bol_filled">filled_bol_demo.pdf (filled — demo)</option>
   </select>
 </header>
 
@@ -374,6 +404,7 @@
         <button class="tab active" data-tab="rendered">Rendered</button>
         <button class="tab locked" data-tab="raw" id="raw-tab-btn">Raw MD <svg class="lock-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></button>
         <button class="tab" data-tab="diff" id="diff-tab-btn">Diff vs Reference</button>
+        <button class="tab" data-tab="excel" id="excel-tab-btn" style="display:none">Excel ↗</button>
       </div>
     </div>
 
@@ -408,6 +439,12 @@
         </div>
         <div id="diff-stats"></div>
         <div id="diff-body"></div>
+      </div>
+
+      <!-- Excel tab -->
+      <div class="md-panel" id="excel-panel">
+        <div class="xl-header" id="xl-header"></div>
+        <div id="xl-body"></div>
       </div>
 
       <!-- Raw tab -->
@@ -480,6 +517,20 @@ const DOCS = {
     pdf:   'attachments/eREDACTED_CaseXXXXX_XXXX_PDFE.pdf',
     md:    'data/eREDACTED_CaseXXXXX_XXXX_PDFE.md',
   },
+  bol: {
+    label: 'TNGImq-bill-of-lading-template.pdf (blank)',
+    pdf:   'attachments/TNGImq-bill-of-lading-template.pdf',
+    md:    'data/TNGImq-bill-of-lading-template.md',
+    xlsx:  'data/TNGImq-bill-of-lading-template.xlsx',
+    structured: 'data/TNGImq-bill-of-lading-template.structured_record.json',
+  },
+  bol_filled: {
+    label: 'filled_bol_demo.pdf (filled — demo)',
+    pdf:   'attachments/filled_bol_demo.pdf',
+    md:    'data/filled_bol_demo.md',
+    xlsx:  'data/filled_bol_demo.xlsx',
+    structured: 'data/filled_bol_demo.structured_record.json',
+  },
 };
 
 // ── STATE ───────────────────────────────────────────────────────
@@ -509,6 +560,10 @@ const loadingOverlay = document.getElementById('loading-overlay');
 const copyBtn        = document.getElementById('copy-btn');
 const rawTabBtn      = document.getElementById('raw-tab-btn');
 const rawLock        = document.getElementById('raw-lock');
+const excelTabBtn    = document.getElementById('excel-tab-btn');
+const excelPanel     = document.getElementById('excel-panel');
+const xlHeader       = document.getElementById('xl-header');
+const xlBody         = document.getElementById('xl-body');
 const lockInput      = document.getElementById('lock-input');
 const lockSubmit     = document.getElementById('lock-submit');
 const lockError      = document.getElementById('lock-error');
@@ -626,11 +681,17 @@ function setTab(tab) {
   renderedPanel.classList.toggle('active', tab === 'rendered');
   rawPanel.classList.toggle('active', tab === 'raw');
   diffPanel.classList.toggle('active', tab === 'diff');
+  excelPanel.classList.toggle('active', tab === 'excel');
   if (tab === 'diff' && currentDocKey) loadDiff(currentDocKey);
+  if (tab === 'excel' && currentDocKey) loadExcel(currentDocKey);
 }
 
 document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (btn.dataset.tab === 'excel') {
+      setTab('excel');
+      return;
+    }
     if (btn.dataset.tab === 'raw' && !rawUnlocked) {
       // Show the raw panel with lock overlay visible, but don't mark tab active
       renderedPanel.classList.remove('active');
@@ -757,11 +818,131 @@ async function loadDiff(key) {
   }
 }
 
+// ── EXCEL TAB ────────────────────────────────────────────────────
+function _xlEsc(v) {
+  return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function _confClass(c) {
+  if (c === null || c === undefined) return 'xl-conf-low';
+  return c >= 0.85 ? 'xl-conf-high' : c >= 0.6 ? 'xl-conf-mid' : 'xl-conf-low';
+}
+
+function _badgeClass(status) {
+  return status === 'ok' ? 'xl-badge-ok' : status === 'warning' ? 'xl-badge-warning' : status === 'error' ? 'xl-badge-error' : 'xl-badge-unknown';
+}
+
+function _reviewStatus(rec) {
+  if (!rec.warnings || rec.warnings.length === 0) return 'ok';
+  if (rec.warnings.some(w => w.includes('Required'))) return 'error';
+  return 'warning';
+}
+
+function _renderFieldsTable(fields) {
+  const entries = Object.entries(fields || {});
+  if (!entries.length) return '<p class="xl-empty">No fields extracted.</p>';
+  const rows = entries.map(([k, v]) => {
+    const val = (v === null || v === undefined || v === '')
+      ? '<span class="xl-null">—</span>'
+      : _xlEsc(v);
+    return `<tr><td class="xl-field-name">${_xlEsc(k)}</td><td>${val}</td></tr>`;
+  }).join('');
+  return `<table class="xl-table"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function _renderLineItemsTable(items) {
+  if (!items || !items.length) return '<p class="xl-empty">No line items found.</p>';
+  const cols = Object.keys(items[0]);
+  const headers = cols.map(c => `<th>${_xlEsc(c)}</th>`).join('');
+  const rows = items.map(item =>
+    '<tr>' + cols.map(c => {
+      const v = item[c];
+      return `<td>${(v === null || v === undefined) ? '<span class="xl-null">—</span>' : _xlEsc(v)}</td>`;
+    }).join('') + '</tr>'
+  ).join('');
+  return `<table class="xl-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function _renderWarningsTable(warnings) {
+  if (!warnings || !warnings.length) {
+    return '<p style="font-size:12px;color:#10b981;padding:8px 0">✓ No warnings</p>';
+  }
+  const rows = warnings.map(w => `<tr><td>${_xlEsc(w)}</td></tr>`).join('');
+  return `<table class="xl-table"><thead><tr><th>Warning</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function loadExcel(key) {
+  const doc = DOCS[key];
+  if (!doc || !doc.structured) {
+    xlHeader.innerHTML = '';
+    xlBody.innerHTML = '<p class="xl-empty">No structured extraction available for this document.</p>';
+    return;
+  }
+
+  xlHeader.innerHTML = '<span style="font-size:12px;color:var(--grey-400)">Loading…</span>';
+  xlBody.innerHTML = '';
+
+  try {
+    const r = await fetch(doc.structured);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const rec = await r.json();
+
+    const conf = rec.confidence;
+    const confPct = conf !== null && conf !== undefined ? Math.round(conf * 100) : null;
+    const status = _reviewStatus(rec);
+    const confFillClass = _confClass(conf);
+    const badgeClass = _badgeClass(status);
+    const confBar = confPct !== null
+      ? `<div class="xl-confidence">
+           <div class="xl-conf-bar"><div class="xl-conf-fill ${confFillClass}" style="width:${confPct}%"></div></div>
+           <span>${confPct}% confidence</span>
+         </div>`
+      : '<span style="font-size:12px;color:var(--grey-400)">Confidence: —</span>';
+
+    const statusLabel = status === 'ok' ? '✓ OK' : status === 'warning' ? '⚠ Warning' : '✗ Error';
+
+    xlHeader.innerHTML = `
+      <span class="xl-badge ${badgeClass}">${statusLabel}</span>
+      ${confBar}
+      <span style="font-size:12px;color:var(--grey-400);margin-left:auto">${rec.document_type}</span>
+      ${doc.xlsx ? `<a class="xl-download" href="${doc.xlsx}" target="_blank">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download XLSX
+      </a>` : ''}
+    `;
+
+    const fieldCount = Object.values(rec.fields || {}).filter(v => v !== null && v !== undefined && v !== '').length;
+    const totalFields = Object.keys(rec.fields || {}).length;
+
+    xlBody.innerHTML = `
+      <div class="xl-section">
+        <div class="xl-section-title">Summary — ${fieldCount} / ${totalFields} fields populated</div>
+        ${_renderFieldsTable(rec.fields)}
+      </div>
+      <div class="xl-section">
+        <div class="xl-section-title">Line Items — ${(rec.line_items || []).length} row(s)</div>
+        ${_renderLineItemsTable(rec.line_items)}
+      </div>
+      <div class="xl-section">
+        <div class="xl-section-title">Warnings</div>
+        ${_renderWarningsTable(rec.warnings)}
+      </div>
+    `;
+  } catch(e) {
+    xlHeader.innerHTML = '';
+    xlBody.innerHTML = `<p style="padding:20px;color:#dc2626">${e.message}</p>`;
+  }
+}
+
 // ── LOAD PRE-BUILT DOCUMENT ──────────────────────────────────────
 async function loadDoc(key) {
   const doc = DOCS[key];
   if (!doc) return;
   currentDocKey = key;
+
+  // Show/hide Excel tab based on whether structured data is available
+  excelTabBtn.style.display = doc.structured ? 'inline-flex' : 'none';
+  if (!doc.structured && activeTab === 'excel') setTab('rendered');
 
   // PDF pane
   pdfFilename.textContent = doc.label;

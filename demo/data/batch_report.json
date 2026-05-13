@@ -1,0 +1,26 @@
+{
+  "total": 1,
+  "succeeded": 1,
+  "failed": 0,
+  "results": [
+    {
+      "source_file": "filled_bol_demo.pdf",
+      "status": "success",
+      "document_id": "39b3e591ddb04bebba74123072c30f7b",
+      "pages": 1,
+      "tables_found": 1,
+      "fields_found": 20,
+      "warnings_count": 0,
+      "errors_count": 0,
+      "output_json": "/tmp/bol_filled_intermediate/filled_bol_demo.extracted_document.json",
+      "output_xlsx": null,
+      "output_csv_dir": null,
+      "processing_seconds": 5.999784708954394,
+      "extraction_methods": [
+        "pymupdf",
+        "llm"
+      ],
+      "error_message": null
+    }
+  ]
+}

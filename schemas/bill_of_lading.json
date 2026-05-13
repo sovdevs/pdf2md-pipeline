@@ -1,0 +1,41 @@
+{
+  "document_type": "bill_of_lading",
+  "description": "Straight Bill of Lading — short form",
+  "fields": [
+    {"name": "carrier_name",            "type": "string",   "required": true,  "description": "Carrier company name"},
+    {"name": "carrier_phone",           "type": "string",   "required": false, "description": "Carrier phone number"},
+    {"name": "carrier_address",         "type": "string",   "required": false, "description": "Carrier street address"},
+    {"name": "shipment_date",           "type": "date",     "required": false, "description": "Date of shipment"},
+    {"name": "shipment_id_no",          "type": "string",   "required": false, "description": "Shipment Identification Number"},
+    {"name": "freight_bill_pro_no",     "type": "string",   "required": false, "description": "Freight Bill Pro Number"},
+    {"name": "trailer_car_number",      "type": "string",   "required": false, "description": "Trailer or car number"},
+    {"name": "route",                   "type": "string",   "required": false, "description": "Shipment route"},
+    {"name": "consignee_name",          "type": "string",   "required": true,  "description": "Consignee (recipient) name"},
+    {"name": "consignee_address",       "type": "string",   "required": false, "description": "Consignee street address"},
+    {"name": "consignee_city",          "type": "string",   "required": false, "description": "Consignee city"},
+    {"name": "consignee_province_postal","type": "string",  "required": false, "description": "Consignee province/state and postal code"},
+    {"name": "shipper_name",            "type": "string",   "required": true,  "description": "Shipper (sender) name"},
+    {"name": "shipper_address",         "type": "string",   "required": false, "description": "Shipper street address"},
+    {"name": "shipper_city",            "type": "string",   "required": false, "description": "Shipper city"},
+    {"name": "shipper_province_postal", "type": "string",   "required": false, "description": "Shipper province/state and postal code"},
+    {"name": "sid_no",                  "type": "string",   "required": false, "description": "Shipper Internal Data SID number"},
+    {"name": "cod_amount",              "type": "currency", "required": false, "description": "Cash on delivery amount"},
+    {"name": "freight_prepaid_collect", "type": "string",   "required": false, "description": "PREPAID or COLLECT"},
+    {"name": "total_charges",           "type": "currency", "required": false, "description": "Total freight charges"}
+  ],
+  "line_items": [
+    {"name": "shipping_units",  "type": "number",  "description": "Number of shipping units"},
+    {"name": "hazmat",          "type": "string",  "description": "Hazardous material indicator (X or RQ)"},
+    {"name": "description",     "type": "string",  "description": "Kind of packaging and description of articles"},
+    {"name": "nmfc_code",       "type": "string",  "description": "NMFC commodity code"},
+    {"name": "weight",          "type": "number",  "description": "Weight subject to correction"},
+    {"name": "rate",            "type": "currency","description": "Rate"},
+    {"name": "charges",         "type": "currency","description": "Line charges"}
+  ],
+  "sheets": {
+    "summary":    "Summary",
+    "line_items": "LineItems",
+    "warnings":   "Warnings",
+    "raw_preview":"RawPreview"
+  }
+}

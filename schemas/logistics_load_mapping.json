@@ -1,0 +1,34 @@
+{
+  "summary_sheet": "Summary",
+  "summary_start_row": 2,
+  "summary_columns": {
+    "file_name":             "A",
+    "document_type":         "B",
+    "load_number":           "C",
+    "bol_number":            "D",
+    "carrier":               "E",
+    "shipper":               "F",
+    "consignee":             "G",
+    "pickup_date":           "H",
+    "delivery_date":         "I",
+    "origin":                "J",
+    "destination":           "K",
+    "miles":                 "L",
+    "total_amount":          "M",
+    "confidence":            "N",
+    "review_status":         "O"
+  },
+  "line_items_sheet": "LineItems",
+  "line_items_start_row": 2,
+  "line_item_columns": {
+    "file_name":   "A",
+    "document_id": "B",
+    "load_number": "C",
+    "description": "D",
+    "quantity":    "E",
+    "unit_price":  "F",
+    "amount":      "G"
+  },
+  "warnings_sheet": "Warnings",
+  "warnings_start_row": 2
+}

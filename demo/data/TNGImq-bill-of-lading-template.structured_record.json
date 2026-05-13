@@ -1,0 +1,34 @@
+{
+  "document_id": "0b9e5625ef0043fdabc7d19fa47e9db2",
+  "source_file": "TNGImq-bill-of-lading-template.pdf",
+  "document_type": "bill_of_lading",
+  "fields": {
+    "carrier_name": "SAC DUNS",
+    "carrier_phone": null,
+    "carrier_address": null,
+    "shipment_date": null,
+    "shipment_id_no": null,
+    "freight_bill_pro_no": null,
+    "trailer_car_number": null,
+    "route": null,
+    "consignee_name": "Consignee",
+    "consignee_address": null,
+    "consignee_city": null,
+    "consignee_province_postal": null,
+    "shipper_name": "Shipper",
+    "shipper_address": null,
+    "shipper_city": null,
+    "shipper_province_postal": null,
+    "sid_no": null,
+    "cod_amount": null,
+    "freight_prepaid_collect": null,
+    "total_charges": null
+  },
+  "line_items": [],
+  "confidence": 0.7,
+  "warnings": [
+    "Could not extract line items from the table.",
+    "Some field values are null due to the document's structure and lack of specific data."
+  ],
+  "extraction_method": "llm"
+}

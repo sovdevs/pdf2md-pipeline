@@ -1,0 +1,36 @@
+{
+  "summary_sheet": "Summary",
+  "summary_start_row": 2,
+  "summary_columns": {
+    "file_name":             "A",
+    "document_type":         "B",
+    "carrier_name":          "C",
+    "shipment_date":         "D",
+    "shipment_id_no":        "E",
+    "freight_bill_pro_no":   "F",
+    "trailer_car_number":    "G",
+    "consignee_name":        "H",
+    "consignee_city":        "I",
+    "shipper_name":          "J",
+    "shipper_city":          "K",
+    "total_charges":         "L",
+    "freight_prepaid_collect":"M",
+    "confidence":            "N",
+    "review_status":         "O"
+  },
+  "line_items_sheet": "LineItems",
+  "line_items_start_row": 2,
+  "line_item_columns": {
+    "file_name":     "A",
+    "document_id":   "B",
+    "shipping_units":"C",
+    "hazmat":        "D",
+    "description":   "E",
+    "nmfc_code":     "F",
+    "weight":        "G",
+    "rate":          "H",
+    "charges":       "I"
+  },
+  "warnings_sheet": "Warnings",
+  "warnings_start_row": 2
+}

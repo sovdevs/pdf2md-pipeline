@@ -1,0 +1,68 @@
+{
+  "document_id": "39b3e591ddb04bebba74123072c30f7b",
+  "source_file": "filled_bol_demo.pdf",
+  "document_type": "bill_of_lading",
+  "fields": {
+    "carrier_name": "Blue Line Freight LLC",
+    "carrier_phone": "+44 161 555 0182",
+    "carrier_address": "12 Freight Way, Manchester, M12 4PP, UK",
+    "shipment_date": "2026-05-12",
+    "shipment_id_no": "SID-4421",
+    "freight_bill_pro_no": "PRO-88210",
+    "trailer_car_number": "TRL-7734-B",
+    "route": "Manchester · Birmingham  (M6/M42)",
+    "consignee_name": "Midlands Retail Distribution",
+    "consignee_address": "45 Logistics Park, Solihull",
+    "consignee_city": "Birmingham",
+    "consignee_province_postal": "B90 4WQ, UK",
+    "shipper_name": "Northside Foods Ltd",
+    "shipper_address": "Unit 7, Trafford Park",
+    "shipper_city": "Manchester",
+    "shipper_province_postal": "M17 1SN, UK",
+    "sid_no": null,
+    "cod_amount": null,
+    "freight_prepaid_collect": "PREPAID",
+    "total_charges": "902.50"
+  },
+  "line_items": [
+    {
+      "shipping_units": 24,
+      "hazmat": null,
+      "description": "Frozen Chicken Portions · Palletised",
+      "nmfc_code": "15012",
+      "weight": 4200.0,
+      "rate": "0.08",
+      "charges": "336.00"
+    },
+    {
+      "shipping_units": 18,
+      "hazmat": null,
+      "description": "Fresh Dairy Products · Refrigerated",
+      "nmfc_code": "15020",
+      "weight": 3150.0,
+      "rate": "0.09",
+      "charges": "283.50"
+    },
+    {
+      "shipping_units": 12,
+      "hazmat": null,
+      "description": "Canned Goods · Mixed Lot",
+      "nmfc_code": "20010",
+      "weight": 2800.0,
+      "rate": "0.06",
+      "charges": "168.00"
+    },
+    {
+      "shipping_units": 8,
+      "hazmat": null,
+      "description": "Dry Goods · Bulk Bags",
+      "nmfc_code": "20015",
+      "weight": 2300.0,
+      "rate": "0.05",
+      "charges": "115.00"
+    }
+  ],
+  "confidence": 0.95,
+  "warnings": [],
+  "extraction_method": "llm"
+}
